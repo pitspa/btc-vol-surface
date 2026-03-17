@@ -34,6 +34,9 @@ jobs:
       - name: Run FIFO cleanup
         run: python scripts/cleanup.py
 
+      - name: Compute signals from today's surface
+        run: python scripts/compute.py
+
       - name: Remove .gitkeep if surfaces exist
         run: |
           CSV_COUNT=$(find surfaces/ -name "*.csv" | wc -l)
@@ -41,16 +44,23 @@ jobs:
             rm surfaces/.gitkeep
           fi
 
+      - name: Remove .gitkeep if signals exist
+        run: |
+          CSV_COUNT=$(find signals/ -name "*.csv" 2>/dev/null | wc -l)
+          if [ "$CSV_COUNT" -gt 0 ] && [ -f signals/.gitkeep ]; then
+            rm signals/.gitkeep
+          fi
+
       - name: Commit and push
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add surfaces/
+          git add surfaces/ signals/
           # Check if there are changes to commit
           if git diff --cached --quiet; then
             echo "No changes to commit."
           else
             DATE=$(date -u +%Y-%m-%d)
-            git commit -m "data: BTC vol surface snapshot ${DATE}"
+            git commit -m "data: BTC vol surface + signals ${DATE}"
             git push
           fi

@@ -1,7 +1,7 @@
 """
 cleanup.py — FIFO Rolling Window Cleanup
 
-Scans the surfaces/ directory and deletes any CSV files
+Scans the surfaces/ and signals/ directories and deletes any CSV files
 older than the rolling window defined in config.json.
 
 Usage (from repo root):
@@ -24,6 +24,7 @@ with open(CONFIG_PATH, "r") as f:
     CONFIG = json.load(f)
 
 SURFACES_DIR = REPO_ROOT / CONFIG["surfaces_dir"]
+SIGNALS_DIR = REPO_ROOT / CONFIG.get("signals_dir", "signals")
 WINDOW_DAYS = CONFIG["rolling_window_days"]
 
 logging.basicConfig(
@@ -38,32 +39,31 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 
-def get_csv_files() -> list:
-    """Return all .csv files in the surfaces directory, sorted by name."""
-    if not SURFACES_DIR.exists():
+def get_csv_files(directory: Path) -> list:
+    """Return all .csv files in the given directory, sorted by name."""
+    if not directory.exists():
         return []
-    return sorted(SURFACES_DIR.glob("*.csv"))
+    return sorted(directory.glob("*.csv"))
 
 
-def parse_date_from_filename(filepath: Path) -> datetime | None:
+def parse_date_from_filename(filepath: Path):
     """
     Extract a date from a filename like '2026-03-17.csv'.
     Returns None if the filename doesn't match the expected pattern.
     """
     try:
-        date_str = filepath.stem  # '2026-03-17'
+        date_str = filepath.stem
         return datetime.strptime(date_str, "%Y-%m-%d")
     except ValueError:
         return None
 
 
-def cleanup():
-    """Delete CSV files older than the rolling window."""
+def cleanup_directory(directory: Path):
+    """Delete CSV files older than the rolling window in the given directory."""
     cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=WINDOW_DAYS)
-    csv_files = get_csv_files()
+    csv_files = get_csv_files(directory)
 
-    logger.info("Rolling window: %d days | Cutoff date: %s", WINDOW_DAYS, cutoff.strftime("%Y-%m-%d"))
-    logger.info("Found %d CSV files in %s", len(csv_files), SURFACES_DIR)
+    logger.info("Directory: %s | Found %d CSV files", directory, len(csv_files))
 
     removed = 0
     kept = 0
@@ -82,7 +82,7 @@ def cleanup():
         else:
             kept += 1
 
-    logger.info("Cleanup complete: %d removed, %d kept.", removed, kept)
+    logger.info("  Result: %d removed, %d kept.", removed, kept)
 
 
 # ---------------------------------------------------------------------------
@@ -90,8 +90,9 @@ def cleanup():
 # ---------------------------------------------------------------------------
 
 def main():
-    logger.info("=== FIFO Cleanup Started ===")
-    cleanup()
+    logger.info("=== FIFO Cleanup Started (window: %d days) ===", WINDOW_DAYS)
+    cleanup_directory(SURFACES_DIR)
+    cleanup_directory(SIGNALS_DIR)
     logger.info("=== Cleanup Complete ===")
 
 

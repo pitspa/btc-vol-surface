@@ -1,0 +1,21 @@
+{
+    "description": "Schema for daily BTC risk-neutral moment signals computed via static replication",
+    "version": "1.0.0",
+    "method": "Bakshi, Kapadia & Madan (2003) static replication with trapezoidal integration",
+    "min_otm_strikes": 15,
+    "frequency": "daily",
+    "columns": [
+        {"name": "snapshot_ts",    "type": "string",  "format": "ISO 8601 UTC", "description": "Timestamp of the underlying surface snapshot"},
+        {"name": "expiry",         "type": "string",  "format": "YYYY-MM-DD",   "description": "Option expiration date"},
+        {"name": "days_to_expiry", "type": "integer", "format": null,           "description": "Calendar days until expiration"},
+        {"name": "T_years",        "type": "float",   "format": null,           "description": "Time to expiry in years (days/365)"},
+        {"name": "forward_price",  "type": "float",   "format": null,           "description": "Synthetic forward price for this expiry in USD"},
+        {"name": "index_price",    "type": "float",   "format": null,           "description": "BTC spot index price in USD at snapshot time"},
+        {"name": "n_strikes",      "type": "integer", "format": null,           "description": "Total number of strikes with matched call/put pairs"},
+        {"name": "n_otm_strikes",  "type": "integer", "format": null,           "description": "Number of OTM strikes used in integration"},
+        {"name": "mu2_variance",   "type": "float",   "format": null,           "description": "Annualised risk-neutral variance (n=2 moment contract); SVIX^2"},
+        {"name": "mu3_cubic",      "type": "float",   "format": null,           "description": "Annualised cubic contract (n=3 moment); skewness contribution"},
+        {"name": "mu4_quartic",    "type": "float",   "format": null,           "description": "Annualised quartic contract (n=4 moment); kurtosis contribution"},
+        {"name": "svix",           "type": "float",   "format": null,           "description": "SVIX index = sqrt(mu2_variance); annualised volatility units"}
+    ]
+}
