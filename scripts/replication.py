@@ -2,7 +2,10 @@ import numpy as np
 
 
 def static_replication_nth_moment(n, K_array, calls_array, puts_array, F, S0, T):
-    # n=2: variance contract (SVIX^2)
+    # Bakshi, Kapadia & Madan (2003) static replication of the n-th
+    # centralised risk-neutral moment of the simple return.
+    #
+    # n=2: variance contract (SVIX^2 when annualised)
     # n=3: cubic contract (skewness contribution)
     # n=4: quartic contract (kurtosis contribution)
     #
