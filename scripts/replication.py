@@ -26,7 +26,7 @@ def static_replication_nth_moment(n, K_array, calls_array, puts_array, F, S0, T)
     integrand = weights * otm_prices
 
     # Trapezoidal integration over strikes
-    integral = np.trapz(integrand, K_array)
+    integral = np.trapezoid(integrand, K_array)
 
     # Prefactor: n(n-1) * Rf / S0^2, annualised by 1/T
     prefactor = n * (n - 1) * Rf / (S0 ** 2 * T)
