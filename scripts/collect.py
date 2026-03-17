@@ -14,7 +14,6 @@ API endpoints used:
     2. public/get_order_book    — returns bid/ask, mark price, IV, greeks per instrument
 """
 
-import os
 import sys
 import json
 import time
@@ -85,17 +84,39 @@ def get_active_option_instruments() -> list:
     return instruments
 
 
-def get_order_book(instrument_name: str):
-    """Fetch the order book (with greeks + IV) for a single instrument."""
-    try:
-        time.sleep(REQUEST_DELAY)
-        result = api_get("get_order_book", {
-            "instrument_name": instrument_name,
-        })
-        return result
-    except Exception as exc:
-        logger.warning("Failed to fetch order book for %s: %s", instrument_name, exc)
-        return None
+MAX_RETRIES = 3
+RETRY_BACKOFF = 2.0  # seconds, doubles each retry
+
+
+def get_order_book(instrument_name: str) -> dict:
+    """
+    Fetch the order book for a single instrument.
+    Retries up to MAX_RETRIES times on failure.
+    Raises on final failure — never returns fallback data.
+    """
+    last_exc = None
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            time.sleep(REQUEST_DELAY)
+            result = api_get("get_order_book", {
+                "instrument_name": instrument_name,
+            })
+            return result
+        except Exception as exc:
+            last_exc = exc
+            if attempt < MAX_RETRIES:
+                wait = RETRY_BACKOFF * (2 ** (attempt - 1))
+                logger.warning(
+                    "Attempt %d/%d failed for %s: %s — retrying in %.1fs",
+                    attempt, MAX_RETRIES, instrument_name, exc, wait,
+                )
+                time.sleep(wait)
+            else:
+                logger.error(
+                    "All %d attempts failed for %s: %s",
+                    MAX_RETRIES, instrument_name, last_exc,
+                )
+                raise last_exc
 
 
 # ---------------------------------------------------------------------------
@@ -141,7 +162,13 @@ def collect_snapshot() -> pd.DataFrame:
                 len(instrument_names))
 
     # Threaded fetch — keep concurrency low for unauthenticated access
+    # STRICT: every failure is tracked. If too many instruments fail,
+    # the entire snapshot is aborted. No partial saves, no fallback data.
+    FAILURE_THRESHOLD = 0.05  # abort if more than 5% of instruments fail
+
     order_books = {}
+    failed_instruments = []
+
     with ThreadPoolExecutor(max_workers=5) as executor:
         future_to_name = {
             executor.submit(get_order_book, name): name
@@ -150,15 +177,33 @@ def collect_snapshot() -> pd.DataFrame:
         done_count = 0
         for future in as_completed(future_to_name):
             name = future_to_name[future]
-            result = future.result()
-            if result is not None:
+            try:
+                result = future.result()
                 order_books[name] = result
+            except Exception as exc:
+                failed_instruments.append(name)
+                logger.error("FAILED (after retries): %s — %s", name, exc)
             done_count += 1
             if done_count % 100 == 0:
-                logger.info("  ... fetched %d / %d", done_count, len(instrument_names))
+                logger.info("  ... processed %d / %d", done_count, len(instrument_names))
 
-    logger.info("Successfully fetched %d / %d order books.",
-                len(order_books), len(instrument_names))
+    n_total = len(instrument_names)
+    n_failed = len(failed_instruments)
+    n_ok = len(order_books)
+    failure_rate = n_failed / n_total if n_total > 0 else 0.0
+
+    logger.info("Fetch results: %d OK, %d FAILED out of %d total (%.1f%% failure rate).",
+                n_ok, n_failed, n_total, failure_rate * 100)
+
+    if n_failed > 0:
+        logger.error("Failed instruments: %s", failed_instruments)
+
+    if failure_rate > FAILURE_THRESHOLD:
+        raise RuntimeError(
+            f"Aborting: failure rate {failure_rate:.1%} exceeds threshold "
+            f"{FAILURE_THRESHOLD:.0%}. {n_failed}/{n_total} instruments failed. "
+            f"No snapshot saved."
+        )
 
     # Assemble rows
     rows = []
