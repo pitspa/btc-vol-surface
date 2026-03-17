@@ -1,0 +1,10 @@
+{
+    "currency": "BTC",
+    "rolling_window_days": 182,
+    "snapshot_hour_utc": 16,
+    "snapshot_minute_utc": 0,
+    "deribit_base_url": "https://www.deribit.com/api/v2/public",
+    "surfaces_dir": "surfaces",
+    "min_open_interest": 0,
+    "notes": "snapshot_hour_utc=16 aligns with 4pm UTC, close to Deribit's 08:00 UTC settlement but adjustable"
+}

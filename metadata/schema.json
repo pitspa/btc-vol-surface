@@ -1,0 +1,23 @@
+{
+    "description": "Schema for daily BTC volatility surface CSV snapshots",
+    "version": "1.0.0",
+    "source": "Deribit public API v2",
+    "frequency": "daily",
+    "columns": [
+        {"name": "snapshot_ts",      "type": "string",  "format": "ISO 8601 UTC", "description": "Timestamp when the snapshot was taken"},
+        {"name": "expiry",           "type": "string",  "format": "YYYY-MM-DD",   "description": "Option expiration date"},
+        {"name": "days_to_expiry",   "type": "integer", "format": null,           "description": "Calendar days until expiration"},
+        {"name": "strike",           "type": "float",   "format": null,           "description": "Strike price in USD"},
+        {"name": "option_type",      "type": "string",  "format": "C or P",       "description": "Call (C) or Put (P)"},
+        {"name": "bid",             "type": "float",   "format": null,           "description": "Best bid price in BTC"},
+        {"name": "ask",             "type": "float",   "format": null,           "description": "Best ask price in BTC"},
+        {"name": "mark_price",      "type": "float",   "format": null,           "description": "Exchange mark price in BTC"},
+        {"name": "underlying_price", "type": "float",   "format": null,           "description": "BTC index price in USD at snapshot time"},
+        {"name": "implied_vol",      "type": "float",   "format": "annualised",   "description": "Implied volatility as decimal (0.65 = 65%)"},
+        {"name": "delta",           "type": "float",   "format": null,           "description": "Option delta"},
+        {"name": "gamma",           "type": "float",   "format": null,           "description": "Option gamma"},
+        {"name": "vega",            "type": "float",   "format": null,           "description": "Option vega"},
+        {"name": "open_interest",    "type": "float",   "format": null,           "description": "Open interest in number of contracts"},
+        {"name": "volume_24h",       "type": "float",   "format": null,           "description": "24-hour trading volume in contracts"}
+    ]
+}
