@@ -12,6 +12,7 @@ No API key required. Uses only public endpoints.
 API endpoints used:
     1. public/get_instruments   — lists all active BTC option contracts
     2. public/get_order_book    — returns bid/ask, mark price, IV, greeks per instrument
+    3. public/get_index_price   — returns the current BTC spot index price
 """
 
 import sys
@@ -82,6 +83,23 @@ def get_active_option_instruments() -> list:
     })
     logger.info("Found %d active %s option instruments.", len(instruments), CURRENCY)
     return instruments
+
+
+def get_index_price() -> float:
+    """
+    Fetch the current BTC spot index price from Deribit.
+    This is the composite spot price (not a forward), computed from
+    multiple exchanges. It is the same index used for settlement.
+    Raises on failure — never returns fallback data.
+    """
+    result = api_get("get_index_price", {
+        "index_name": f"btc_usd",
+    })
+    price = result.get("index_price")
+    if price is None:
+        raise ValueError(f"No 'index_price' in response: {result}")
+    logger.info("BTC spot index price: %.2f USD", price)
+    return float(price)
 
 
 MAX_RETRIES = 3
@@ -157,6 +175,9 @@ def collect_snapshot() -> pd.DataFrame:
     snapshot_ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     instruments = get_active_option_instruments()
     instrument_names = [inst["instrument_name"] for inst in instruments]
+
+    # Fetch the BTC spot index price (single value, same for all rows)
+    index_price = get_index_price()
 
     logger.info("Fetching order books for %d instruments (this may take a few minutes)...",
                 len(instrument_names))
@@ -234,7 +255,8 @@ def collect_snapshot() -> pd.DataFrame:
             "bid": ob.get("best_bid_price"),
             "ask": ob.get("best_ask_price"),
             "mark_price": ob.get("mark_price"),
-            "underlying_price": ob.get("underlying_price"),
+            "forward_price": ob.get("underlying_price"),
+            "index_price": index_price,
             "implied_vol": ob.get("mark_iv"),
             "delta": greeks.get("delta"),
             "gamma": greeks.get("gamma"),
